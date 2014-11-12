@@ -303,8 +303,8 @@ void cv::Canny( InputArray _src, OutputArray _dst,
                     }
                     else//ldh:[22.5,67.5]->45
                     {
-                        angles_mat.at<uchar>(i,j)=45;
                         int s = (xs ^ ys) < 0 ? -1 : 1;
+                        angles_mat.at<uchar>(i,j)=(s>0?45:135);
                         if (m > _mag[j+magstep2-s] && m > _mag[j+magstep1+s]) goto __ocv_canny_push;
                     }
                 }
