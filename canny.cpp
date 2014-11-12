@@ -44,6 +44,7 @@
 #include <ctime>
 #include <locale>
 #include <iostream>
+#include <cmath>
 
 /*
 #if defined (HAVE_IPP) && (IPP_VERSION_MAJOR >= 7)
@@ -52,21 +53,24 @@
 #undef USE_IPP_CANNY
 #endif
 */
+using namespace std;
+const double PI = 3.14159265;
 
 std::ofstream logfile;
-void log(std::stringstream& s)
+void logss(std::stringstream& s)
 {
     if(!logfile.is_open()) {
       logfile.open("debugdata.txt",std::ios::app);
     }
     logfile << std::endl;
     logfile << s.rdbuf();
+    logfile.flush();
 }
 
-void dumpMat_U8(const cv::Mat &m)
+void dumpMat_U8(const cv::Mat &m, const std::string prefix)
 {
   std::stringstream s;
-  s << "dump mat:";
+  s << prefix << ":";
   for(int i = 0; i < m.rows; i++)
   {
       for(int j = 0; j < m.cols; j++)
@@ -75,7 +79,7 @@ void dumpMat_U8(const cv::Mat &m)
       }
       s<<std::endl;
   }
-  log(s);
+  logss(s);
 }
 
 #ifdef USE_IPP_CANNY
@@ -125,7 +129,7 @@ void cv::Canny( InputArray _src, OutputArray _dst,
     Mat src = _src.getMat();
     CV_Assert( src.depth() == CV_8U );
 
-    Mat padded_mat; padded_mat=Mat::zeros(src.size()*3,CV_8U);
+    Mat padded_mat; padded_mat=Mat::zeros(src.size()*5,CV_8U);
     Mat angles_mat(src.size(),CV_8U);
 
     _dst.create(src.size(), CV_8U);//change the output format
@@ -288,9 +292,13 @@ void cv::Canny( InputArray _src, OutputArray _dst,
 
                 int tg22x = x * TG22; //ldh:tg22x is the 
 
+                double atan_degree=atan2(ys,xs)*180/PI;
+                if (atan_degree<0) atan_degree+=180;
+                angles_mat.at<uchar>(i,j)=(uchar)(atan_degree+0.5);
+
                 if (y < tg22x) //ldh: [0,22.5] ->0. y/x < tan(22d), i.e.,y/x is less than 22.5 degree (45/2)
                 {
-                    angles_mat.at<uchar>(i,j)=0;
+                    //angles_mat.at<uchar>(i,j)=0;
                     if (m > _mag[j-1] && m >= _mag[j+1]) goto __ocv_canny_push;
                 }
                 else //ldh:[22.5,90]
@@ -298,13 +306,13 @@ void cv::Canny( InputArray _src, OutputArray _dst,
                     int tg67x = tg22x + (x << (CANNY_SHIFT+1));
                     if (y > tg67x)//ldh:[67.5,90]->90
                     {
-                        angles_mat.at<uchar>(i,j)=90;
+                        //angles_mat.at<uchar>(i,j)=90;
                         if (m > _mag[j+magstep2] && m >= _mag[j+magstep1]) goto __ocv_canny_push;
                     }
                     else//ldh:[22.5,67.5]->45
                     {
                         int s = (xs ^ ys) < 0 ? -1 : 1;
-                        angles_mat.at<uchar>(i,j)=(s>0?45:135);
+                        //angles_mat.at<uchar>(i,j)=(s>0?45:135);
                         if (m > _mag[j+magstep2-s] && m > _mag[j+magstep1+s]) goto __ocv_canny_push;
                     }
                 }
@@ -363,12 +371,70 @@ __ocv_canny_push:
             pdst[j] = (uchar)-(pmap[j] >> 1);
     }
 
+    pdst = dst.ptr();
+    std::stringstream trace_ss;
     // output the angles to dst for debugging
-    for (int i = 0; i < src.rows; i++, pmap += mapstep, pdst += dst.step)
+    for (int i = 0; i < src.rows; i++, pdst += dst.step)
     {
+        for (int j = 0; j < src.cols; j++) {
+          if(pdst[j]==255){// this is an edge, extend the edge at its pependicular direction
+            trace_ss << "i:" << i << ";j:" << j << std::endl;
+            int i5=i*5+1,j5=j*5+1;
+            padded_mat.at<uchar>(i5,j5)=255;
+            // line drawing algorithm
+            //dx = x2 - x1
+            //dy = y2 - y1
+            //for x from x1 to x2 {
+            // y = y1 + dy * (x - x1) / dx
+            // plot(x, y)
+            //}
+            int edge_angle = angles_mat.at<uchar>(i,j)-90;
+            if (edge_angle<0) edge_angle+=180;
+
+            trace_ss << "edge_angle:" << edge_angle << std::endl;
+            logss(trace_ss);
+            double edge_angle_radian = edge_angle * PI / 180.0;
+            trace_ss << "edge_angle_radian:" << edge_angle_radian << std::endl;
+            logss(trace_ss);
+            if (edge_angle < 45 || edge_angle > 135) {// horizontal-ish line, start with j
+              trace_ss << "<45||>135:" << std::endl;
+              logss(trace_ss);
+              for (int dj=j5-2;dj<=j5+2;dj++) {
+                int dd = dj-j5;
+                int di = (int)(i5+dd * tan(edge_angle_radian)+0.5);
+                padded_mat.at<uchar>(di,dj)=155;
+              }
+            } else { // vertical-ish line, start with i
+              trace_ss << ">=45&&<=135:" << std::endl;
+              logss(trace_ss);
+              for (int di=i5-2;di<=i5+2;di++) {
+                trace_ss << "i5:" << i5 << "di:" << di << std::endl;
+                logss(trace_ss);
+                int dd = di-i5;
+                int dj = (int)(j5+dd * tan(PI*0.5-edge_angle_radian)+0.5);
+                trace_ss << "dd:" << dd << std::endl;
+                trace_ss << "dj:" << dj << std::endl;
+                logss(trace_ss);
+                padded_mat.at<uchar>(di,dj)=155;
+              }
+            }
+
+
+            //int i3=i*3+1,j3=j*3+1;
+            //padded_mat.at<uchar>(i3,j3)=255;
+            //switch(angles_mat.at<uchar>(i,j)) {
+            //  case 90 /*0*/: padded_mat.at<uchar>(i3,j3+1)=155;   padded_mat.at<uchar>(i3,j3-1)=155; break;
+            //  case 135/*45*/: padded_mat.at<uchar>(i3+1,j3+1)=155;padded_mat.at<uchar>(i3-1,j3-1)=155; break;
+            //  case 0  /*90*/: padded_mat.at<uchar>(i3+1,j3)=155;  padded_mat.at<uchar>(i3-1,j3)=155;break;
+            //  case 45 /*135*/:padded_mat.at<uchar>(i3+1,j3-1)=155;padded_mat.at<uchar>(i3-1,j3+1)=155; break;
+            //  default: break;
+            //}
+          }
+        }
     }
     // output the angles for debuggins
-    dumpMat_U8(angles_mat);
+    dumpMat_U8(angles_mat, "angles_mat");
+    dumpMat_U8(padded_mat, "padded_mat");
 }
 
 //void cv::Canny_ORI( InputArray _src, OutputArray _dst,
