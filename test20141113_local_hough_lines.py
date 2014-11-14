@@ -3,6 +3,9 @@ import cv2
 import cv2.cv as cv
 from matplotlib import pyplot as plt
 from math import sqrt
+import time
+from datetime import date
+from datetime import datetime
 
 def height(img):
   return img.shape[0]
@@ -40,11 +43,27 @@ def on_circles(x,y,circles):
   return False
 
 # Load an color image in grayscale
-img_ori = cv2.imread('./data/fruits2.jpg')
+img_ori = cv2.imread('building.jpg')
 img = cv2.cvtColor(img_ori,cv2.COLOR_BGR2GRAY)
 img_blur = cv2.medianBlur(img,7)
 img_dog=img-img_blur
 img_lines = img_ori.copy()
+
+edges = cv2.Canny(img,50,150,apertureSize = 3)
+lines_all = cv2.HoughLines(edges,1,np.pi/180,200)
+img_lines_all = img_ori.copy()
+if (lines_all is not None):
+  for rho,theta in lines_all[0]:
+      a = np.cos(theta)
+      b = np.sin(theta)
+      x0 = a*rho
+      y0 = b*rho
+      x1 = int(x0 + 5*(-b))
+      y1 = int(y0 + 5*(a))
+      x2 = int(x0 - 5*(-b))
+      y2 = int(y0 - 5*(a))
+      cv2.line(img_lines_all,(x1,y1),(x2,y2),(0,0,255),2)
+      break
 
 # for each 5x5 block, calculate hough line
 for block_y in range(0,width(img)/5-1):
@@ -55,17 +74,27 @@ for block_y in range(0,width(img)/5-1):
     lines = cv2.HoughLines(roi,1,np.pi/180,200*7)
     #if(lines is not None and lines.any()):
     if (lines is not None):
-      for rho,theta in lines[0]:
-          a = np.cos(theta)
-          b = np.sin(theta)
-          x0 = a*rho
-          y0 = b*rho
-          x1 = int(x0 + 5*(-b))
-          y1 = int(y0 + 5*(a))
-          x2 = int(x0 - 5*(-b))
-          y2 = int(y0 - 5*(a))
-          cv2.line(roi_line,(x1,y1),(x2,y2),(0,0,255),2)
-          break;
+      #for rho,theta in lines[0]:
+      #    a = np.cos(theta)
+      #    b = np.sin(theta)
+      #    x0 = a*rho
+      #    y0 = b*rho
+      #    x1 = int(x0 + 5*(-b))
+      #    y1 = int(y0 + 5*(a))
+      #    x2 = int(x0 - 5*(-b))
+      #    y2 = int(y0 - 5*(a))
+      #    cv2.line(roi_line,(x1,y1),(x2,y2),(0,0,255),2)
+      #    break
+      rho,theta = lines[0]
+      a = np.cos(theta)
+      b = np.sin(theta)
+      x0 = a*rho
+      y0 = b*rho
+      x1 = int(x0 + 5*(-b))
+      y1 = int(y0 + 5*(a))
+      x2 = int(x0 - 5*(-b))
+      y2 = int(y0 - 5*(a))
+      cv2.line(roi_line,(x1,y1),(x2,y2),(0,0,255),2)
 
     img_lines[block_x*5:block_x*5+4,block_y*5:block_y*5+4] = roi_line
     img[block_x*5:block_x*5+4,block_y*5:block_y*5+4] = roi
@@ -82,6 +111,13 @@ plt.subplot(223),plt.imshow(img_dog,cmap = 'gray')
 plt.title('DOG Image'), plt.xticks([]), plt.yticks([])
 plt.subplot(224),plt.imshow(img_lines,cmap = 'gray')
 plt.title('Line Image'), plt.xticks([]), plt.yticks([])
+
+today=datetime.now().strftime("%y-%m-%d_%H-%M_")
+np.savetxt(today+"img.csv", img, '%.u', ',')
+img_lines_gray = cv2.cvtColor(img_lines,cv2.COLOR_BGR2GRAY)
+np.savetxt(today+"img_lines.csv", img_lines_gray, '%.u', ',')
+img_lines_all_gray = cv2.cvtColor(img_lines_all,cv2.COLOR_BGR2GRAY)
+np.savetxt(today+"img_lines_all.csv", img_lines_all_gray, '%.u', ',')
 
 plt.show()
 
