@@ -72,6 +72,44 @@ CvLinePolar;
 
 static CV_IMPLEMENT_QSORT_EX( icvHoughSortDescent32s, int, hough_cmp_gt, const int* )
 
+
+#include <fstream>
+#include <ctime>
+#include <locale>
+#include <iostream>
+#include <cmath>
+using namespace std;
+std::ofstream logfile;
+void logss(std::stringstream& s)
+{
+    if(!logfile.is_open()) {
+      logfile.open("debugdata.txt");
+      //logfile.open("debugdata.txt",std::ios::app);
+    }
+    logfile << std::endl;
+    logfile << "--------------------------------------------";
+    logfile << std::endl;
+    logfile << s.rdbuf();
+    logfile.flush();
+}
+
+void dumpMat_U8(const cv::Mat &m, const std::string prefix)
+{
+  std::stringstream s;
+  s << prefix << ":" << endl;
+  for(int i = 0; i < m.rows; i++)
+  {
+      for(int j = 0; j < m.cols; j++)
+      {
+        s<<","<<(int)(m.at<uchar>(i,j));
+      }
+      s<<std::endl;
+  }
+  logss(s);
+}
+
+
+
 /*
 Here image is an input raster;
 step is it's step; size characterizes it's ROI;
@@ -85,7 +123,7 @@ static void
 icvHoughLinesStandard( const CvMat* img, float rho, float theta,
                        int threshold, CvSeq *lines, int linesMax )
 {
-    cv::AutoBuffer<int> _accum, _sort_buf;
+    cv::AutoBuffer<int> _accum, _accum_ori, _sort_buf;
     cv::AutoBuffer<float> _tabSin, _tabCos;
 
     const uchar* image;
@@ -103,17 +141,36 @@ icvHoughLinesStandard( const CvMat* img, float rho, float theta,
     width = img->cols;
     height = img->rows;
 
+    std::stringstream ss;
+    ss << "hough_image:" << endl;
+    for(int i = 0; i < height; i++ )
+    {
+        for(int j = 0; j < width; j++ )
+        {
+            ss << (int)(image[i * step + j]) << ",";
+        }
+            ss << endl;
+    }
+
+    logss(ss);
+
     numangle = cvRound(CV_PI / theta);
     numrho = cvRound(((width + height) * 2 + 1) / rho);
+    scale = 1./(numrho+2);
 
+    ss << "lines1:" << endl; logss(ss);
     _accum.allocate((numangle+2) * (numrho+2));
+    _accum_ori.allocate((numangle+2) * (numrho+2));
     _sort_buf.allocate(numangle * numrho);
     _tabSin.allocate(numangle);
     _tabCos.allocate(numangle);
     int *accum = _accum, *sort_buf = _sort_buf;
+    int *accum_ori=_accum_ori;
     float *tabSin = _tabSin, *tabCos = _tabCos;
 
+    ss << "lines2:" << endl; logss(ss);
     memset( accum, 0, sizeof(accum[0]) * (numangle+2) * (numrho+2) );
+    memset( accum_ori, 0, sizeof(accum_ori[0]) * (numangle+2) * (numrho+2) );
 
     float ang = 0;
     for(int n = 0; n < numangle; ang += theta, n++ )
@@ -122,6 +179,7 @@ icvHoughLinesStandard( const CvMat* img, float rho, float theta,
         tabCos[n] = (float)(cos((double)ang) * irho);
     }
 
+    ss << "lines3:" << endl; logss(ss);
     // stage 1. fill accumulator
     for( i = 0; i < height; i++ )
         for( j = 0; j < width; j++ )
@@ -131,7 +189,9 @@ icvHoughLinesStandard( const CvMat* img, float rho, float theta,
                 {
                     int r = cvRound( j * tabCos[n] + i * tabSin[n] );
                     r += (numrho - 1) / 2;
+                    // ldh: add image's content
                     accum[(n+1) * (numrho+2) + r+1] += image[i * step + j];
+                    accum_ori[(n+1) * (numrho+2) + r+1] ++;
                 }
 
 
@@ -144,25 +204,78 @@ icvHoughLinesStandard( const CvMat* img, float rho, float theta,
 //                }
         }
 
+    ss << "accum1:" << endl;
+    for(int r = 0; r < numrho; r++ ) {
+        for(int n = 0; n < numangle; n++ )
+        {
+            int base = n * numrho + r;
+            ss << accum[base] << ",";
+        }
+        ss << endl;
+        ss << r << ",";
+    }
+    logss(ss);
 
+    ss << "accum2:" << endl;
+    for (int i = 0; i < (numangle+2) * (numrho+2); i ++) {
+      if (i%10==0) {ss << endl; ss << i << ",";}
+      ss << accum[i] << ",";
+
+    }
+    logss(ss);
+
+    ss << "lines4:" << endl; logss(ss);
 
     // stage 2. find local maximums
     for(int r = 0; r < numrho; r++ )
         for(int n = 0; n < numangle; n++ )
         {
             int base = (n+1) * (numrho+2) + r+1;
+            ss << "lines4-0:" << numrho << endl; logss(ss);
+            ss << "lines4-1:" << r << "," << n << ";" << total << ";" << base << endl; logss(ss);
+            ss << "lines4-2:" << accum[base] << ";" << threshold << endl; logss(ss);
+            ss << "lines4-3:" << accum[base-1] << ";" << threshold << endl; logss(ss);
+            ss << "lines4-4:" << accum[base+1] << ";" << threshold << endl; logss(ss);
+            ss << "lines4-5:" << accum[base - numrho - 2] << ";" << threshold << endl; logss(ss);
+            ss << "lines4-6:" << accum[base + numrho + 2] << ";" << threshold << endl; logss(ss);
             if( accum[base] > threshold &&
                 accum[base] > accum[base - 1] && accum[base] >= accum[base + 1] &&
                 accum[base] > accum[base - numrho - 2] && accum[base] >= accum[base + numrho + 2] )
-                sort_buf[total++] = base;
+                {
+                  ss << "lines4-2:" << total << ";" << base << endl; logss(ss);
+                  sort_buf[total++] = base;
+                }
         }
 
+    ss << "lines5:" << numrho << ";" << numangle << ";total:" << total << endl; logss(ss);
     // stage 3. sort the detected lines by accumulator value
     icvHoughSortDescent32s( sort_buf, total, accum );
+    ss << "lines5-1:" << endl; logss(ss);
+    ss << "lines:" << endl;
+    for( i = 0; i < MIN(linesMax, total); i++ )
+    {
+        CvLinePolar line;
+    ss << "lines5-1-1:" << i << endl; logss(ss);
+        int idx = sort_buf[i];
+    ss << "lines5-1-2:" << endl; logss(ss);
+        int n = cvFloor(idx*scale) - 1;
+    ss << "lines5-1-3:" << endl; logss(ss);
+        int r = idx - (n+1)*(numrho+2) - 1;
+    ss << "lines5-1-4:" << endl; logss(ss);
+        line.rho = (r - (numrho - 1)*0.5f) * rho;
+    ss << "lines5-1-5:" << endl; logss(ss);
+        line.angle = n * theta;
+    ss << "lines5-1-6:" << endl; logss(ss);
+        cvSeqPush( lines, &line );
+    ss << "lines5-1-7:" << idx << endl; logss(ss);
+        ss << i << ":" << line.rho << "," << line.angle << "," << accum[idx] << "," << accum_ori[idx] << endl;
+    }
+    logss(ss);
 
+    ss << "lines6:" << endl; logss(ss);
     // stage 4. store the first min(total,linesMax) lines to the output buffer
     linesMax = MIN(linesMax, total);
-    scale = 1./(numrho+2);
+    ss << "lines:" << endl;
     for( i = 0; i < linesMax; i++ )
     {
         CvLinePolar line;
@@ -172,7 +285,33 @@ icvHoughLinesStandard( const CvMat* img, float rho, float theta,
         line.rho = (r - (numrho - 1)*0.5f) * rho;
         line.angle = n * theta;
         cvSeqPush( lines, &line );
+        ss << i << ":" << line.rho << "," << line.angle << endl;
     }
+    logss(ss);
+
+    ss << "original accum:" << endl;
+    for(int r = 0; r < numrho; r++ ) {
+        for(int n = 0; n < numangle; n++ )
+        {
+            int base = (n+1) * (numrho+2) + r+1;
+            ss << accum_ori[base] << ",";
+        }
+        ss << endl;
+    }
+    logss(ss);
+    ss << "accum:" << endl;
+    for(int r = 0; r < numrho; r++ ) {
+        for(int n = 0; n < numangle; n++ )
+        {
+            int base = (n+1) * (numrho+2) + r+1;
+            ss << accum[base] << ",";
+        }
+        ss << endl;
+    }
+    logss(ss);
+
+
+
 }
 
 
@@ -714,7 +853,8 @@ cvHoughLines2( CvArr* src_image, void* lineStorage, int method,
     CvSeq lines_header;
     CvSeqBlock lines_block;
     int lineType, elemSize;
-    int linesMax = INT_MAX;
+    //int linesMax = INT_MAX;
+    int linesMax = 100;//ldh
     int iparam1, iparam2;
 
     img = cvGetMat( img, &stub );
