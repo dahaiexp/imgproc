@@ -85,7 +85,6 @@ using namespace std;
 std::ofstream logfile;
 void logss(std::stringstream& s)
 {
-  return;
     if(!logfile.is_open()) {
       logfile.open("debugdata.txt");
       //logfile.open("debugdata.txt",std::ios::app);
@@ -94,7 +93,7 @@ void logss(std::stringstream& s)
     logfile << "--------------------------------------------";
     logfile << std::endl;
     logfile << s.rdbuf();
-    //logfile.flush();
+    logfile.flush();
 }
 
 void dumpMat_U8(const cv::Mat &m, const std::string prefix)
@@ -113,8 +112,8 @@ void dumpMat_U8(const cv::Mat &m, const std::string prefix)
 }
 
 // 1, horizontal, 2, vertical, 0 none
-int is_horizontal(double degree) {
-  //double degree=radian/CV_PI * 180.0;
+int is_horizontal(double radian) {
+  double degree=radian/CV_PI * 180.0;
   while(degree >= 360) {degree-=360;}
   while(degree < 0) {degree+=360;}
 
@@ -123,9 +122,9 @@ int is_horizontal(double degree) {
   return 0;
 }
 
-// 1, positive-diagonal, 2, negative-diagonal, 0 none
-int is_diaganal(double degree) {
-  //double degree=radian/CV_PI * 180.0;
+// 1, positive-diagonal, 2, negative-diaganal, 0 none
+int is_diaganal(double radian) {
+  double degree=radian/CV_PI * 180.0;
   while(degree >= 360) {degree-=360;}
   while(degree < 0) {degree+=360;}
 
@@ -169,11 +168,11 @@ icvHoughLinesStandard( const CvMat* img, float rho, float theta,
 
     std::stringstream ss;
     ss << "hough_image:" << endl;
-    for(int ii = 0; ii < height; ii++ )
+    for(int i = 0; i < height; i++ )
     {
-        for(int jj = 0; jj < width; jj++ )
+        for(int j = 0; j < width; j++ )
         {
-            ss << (int)(image[ii * step + jj]) << ",";
+            ss << (int)(image[i * step + j]) << ",";
         }
             ss << endl;
     }
@@ -208,102 +207,49 @@ icvHoughLinesStandard( const CvMat* img, float rho, float theta,
     ss << "lines3:" << endl; logss(ss);
     // stage 1. fill accumulator
     for( i = 0; i < height; i++ ) // i-->y
-    {
-        ss << "for:i=" << i << endl;
-        for( j = 0; j < width; j++ ) // j-->x
+        for( j = 0; j < width; j++ )
         {
-            ss << "   for:j=" << j << endl;
-            //if( image[i * step + j] != 0 )
-            {
+            if( image[i * step + j] != 0 )
                 for(int n = 0; n < numangle; n++ )
                 {
-                    ss << "for:i=" << i << ";" << j << ";n=" << n << ";" << endl;
                     int r = cvRound( j * tabCos[n] + i * tabSin[n] );
                     r += (numrho - 1) / 2;
-                    ss << "r=" << r << ";";
                     int horizontal = is_horizontal(n); // 1, horizontal, 2, vertical, 0 none
-                    int diagonal = is_diaganal(n); // 1, positive-diagonal, 2, negative-diagonal, 0 none
+                    int diagonal = is_diaganal(n); // 1, positive-diagonal, 2, negative-diaganal, 0 none
                     bool continous_ridge_pixel = false;
-                    ss << "horizontal=" << horizontal << ";";
-                    ss << "diagonal=" << diagonal << ";";
                     if (horizontal==1) {//horizontal
-                      ss << "angle=1;";
-                      ss << (int)(image[j  +(i)*step])  << ";" << (int)(image[j  +(i-1)*step]) << ";" << (int)(image[j  +(i)*step]) << ";" << (int)(image[j  +(i+1)*step]) << ";"
-                      //    << (int)(image[j-1+(i)*step]) << ";" << (int)(image[j-1+(i-1)*step]) << ";" << (int)(image[j-1+(i)*step]) << ";" << (int)(image[j-1+(i+1)*step])    << ";"
-                      //    << (int)(image[j+1+(i)*step]) << ";" << (int)(image[j+1+(i-1)*step]) << ";" << (int)(image[j+1+(i)*step]) << ";" << (int)(image[j+1+(i+1)*step])    << ";"
-                      //<< ";"
-                      ;
-
-                      if (image[j  +(i)*step]>image[j  +(i-1)*step]&&image[j  +(i)*step]>image[j  +(i+1)*step]
-                     // &&  image[j-1+(i)*step]>image[j-1+(i-1)*step]&&image[j-1+(i)*step]>image[j-1+(i+1)*step]
-                     // &&  image[j+1+(i)*step]>image[j+1+(i-1)*step]&&image[j+1+(i)*step]>image[j+1+(i+1)*step]
-                      ) {
-                        ss << "=1;";
+                      if (image[x  ,y]>image[x  ,y-1]&&image[x  ,y]>image[x  ,y+1]
+                      &&  image[x-1,y]>image[x-1,y-1]&&image[x-1,y]>image[x-1,y+1]
+                      &&  image[x+1,y]>image[x+1,y-1]&&image[x+1,y]>image[x+1,y+1]) {
                         continous_ridge_pixel=true;
                       }
-                    }
                     else if (horizontal==2) {//vertical
-                      ss << "angle=2;";
-
-                      ss << (int)(image[j+(i  )*step]) << ";" << (int)(image[j-1+(i  )*step]) << ";" << (int)(image[j+(i  )*step]) << ";" << (int)(image[j+1+(i  )*step])  << ";"
-                      //  <<  (int)(image[j+(i-1)*step]) << ";" << (int)(image[j-1+(i-1)*step]) << ";" << (int)(image[j+(i-1)*step]) << ";" << (int)(image[j+1+(i-1)*step])  << ";"
-                      //   << (int)(image[j+(i+1)*step]) << ";" << (int)(image[j-1+(i+1)*step]) << ";" << (int)(image[j+(i+1)*step]) << ";" << (int)(image[j+1+(i+1)*step])  << ";"
-                         ;
-
-
-                      if (image[j+(i  )*step]>image[j-1+(i  )*step]&&image[j+(i  )*step]>image[j+1+(i  )*step]
-                     // &&  image[j+(i-1)*step]>image[j-1+(i-1)*step]&&image[j+(i-1)*step]>image[j+1+(i-1)*step]
-                     // &&  image[j+(i+1)*step]>image[j-1+(i+1)*step]&&image[j+(i+1)*step]>image[j+1+(i+1)*step]
-                      ) {
-                        ss << "=1;";
+                      if (image[x,y  ]>image[x-1,y  ]&&image[x  ,y  ]>image[x+1,y  ]
+                      &&  image[x,y-1]>image[x-1,y-1]&&image[x-1,y-1]>image[x-1,y-1]
+                      &&  image[x,y+1]>image[x+1,y+1]&&image[x  ,y+1]>image[x-1,y+1]) {
                         continous_ridge_pixel=true;
                       }
                     }
-                    else if (diagonal==1) {// positive diagonal
-                      ss << "angle=3;";
-                      ss << (int)(image[j  +(i  )*step]) << ";" << (int)(image[j+1+(i-1)*step]) << ";" << (int)(image[j  +(i  )*step]) << ";" << (int)(image[j-1+(i+1)*step]) << ";"
-                      // <<   (int)(image[j-1+(i-1)*step]) << ";" << (int)(image[j-1+(i  )*step]) << ";" << (int)(image[j-1+(i-1)*step]) << ";" << (int)(image[j  +(i-1)*step]) << ";"
-                      // <<   (int)(image[j+1+(i+1)*step]) << ";" << (int)(image[j  +(i+1)*step]) << ";" << (int)(image[j+1+(i+1)*step]) << ";" << (int)(image[j+1+(i  )*step]) << ";"
-                       ;
-
-                      if (image[j  +(i  )*step]>image[j+1+(i-1)*step]&&image[j  +(i  )*step]>image[j-1+(i+1)*step]
-                     // &&  image[j-1+(i-1)*step]>image[j-1+(i  )*step]&&image[j-1+(i-1)*step]>image[j  +(i-1)*step]
-                     // &&  image[j+1+(i+1)*step]>image[j  +(i+1)*step]&&image[j+1+(i+1)*step]>image[j+1+(i  )*step]
-                      //&&  image[j-1+(i-1)*step]>=image[j-2+(i-1)*step]&&image[j-1+(i-1)*step]>=image[j-1+(i-2)*step]
-                      //&&  image[j+1+(i+1)*step]>=image[j+1+(i+2)*step]&&image[j+1+(i+1)*step]>=image[j+2+(i+1)*step]
-                      ) {
-                        ss << "=1;";
+                    else if (diagonal==1) {// positive diaganal
+                      if (image[x,y]>image[x+1,y-1]&&image[x,y]>image[x-1,y+1]
+                      && image[x-1,y-1]>image[x-1,y]&&image[x-1,y-1]>image[x,y-1]
+                      && image[x+1,y+1]>image[x,y+1]&&image[x+1,y+1]>image[x+1,y]) {
                         continous_ridge_pixel=true;
                       }
                     }
-                    else {//negative diagonal
-                      ss << "angle=4;";
-                      ss << (int)(image[j  +(i  )*step]) << ";" << (int)(image[j-1+(i-1)*step]) << ";" << (int)(image[j  +(i  )*step]) << ";" << (int)(image[j+1+(i+1)*step]) << ";"
-                      //  <<  (int)(image[j+1+(i-1)*step]) << ";" << (int)(image[j+1+(i  )*step]) << ";" << (int)(image[j+1+(i-1)*step]) << ";" << (int)(image[j  +(i-1)*step]) << ";"
-                      //  <<  (int)(image[j-1+(i+1)*step]) << ";" << (int)(image[j  +(i+1)*step]) << ";" << (int)(image[j-1+(i+1)*step]) << ";" << (int)(image[j-1+(i  )*step]) << ";"
-                        ;
-
-                      if (image[j  +(i  )*step]>image[j-1+(i-1)*step]&&image[j  +(i  )*step]>image[j+1+(i+1)*step]
-                     // &&  image[j+1+(i-1)*step]>image[j+1+(i  )*step]&&image[j+1+(i-1)*step]>image[j  +(i-1)*step]
-                     // &&  image[j-1+(i+1)*step]>image[j  +(i+1)*step]&&image[j-1+(i+1)*step]>image[j-1+(i  )*step]
-                     // &&  image[j+1+(i-1)*step]>=image[j+2+(i-1)*step]&&image[j+1+(i-1)*step]>=image[j+1+(i-2)*step]
-                     // &&  image[j-1+(i+1)*step]>=image[j-2+(i+1)*step]&&image[j-1+(i+1)*step]>=image[j-1+(i+2)*step]
-                      ) {
-                        ss << "=1;";
+                    else {//negative diagnal
+                      if (image[x,y]>image[x-1,y]&&image[x,y]>image[x+1,y]
+                      && image[x+1,y-1]>image[x+1,y]&&image[x+1,y-1]>image[x,y-1]
+                      && image[x-1,y+1]>image[x,y+1]&&image[x-1,y+1]>image[x-1,y]) {
                         continous_ridge_pixel=true;
                       }
                     }
-                    ss << "continous_ridge_pixel=" << continous_ridge_pixel << ";";
-                    ss << "accum=" << accum[(n+1) * (numrho+2) + r+1] << ";";
-                    ss << "image=" << int(image[i * step + j]) << ";";
 
                     if (continous_ridge_pixel) {
                       // ldh: add image's content
                       accum[(n+1) * (numrho+2) + r+1] += image[i * step + j];
-                      //accum[(n+1) * (numrho+2) + r+1] ++;
                       accum_ori[(n+1) * (numrho+2) + r+1] ++;
                     }
-                    ss << "accum2=" << accum[(n+1) * (numrho+2) + r+1] << ";";
                 }
 
 
@@ -314,10 +260,7 @@ icvHoughLinesStandard( const CvMat* img, float rho, float theta,
 //                    r += (numrho - 1) / 2;
 //                    accum[(n+1) * (numrho+2) + r+1]++;
 //                }
-            }
         }
-    }
-    logss(ss);
 
     ss << "accum1:" << endl;
     for(int r = 0; r < numrho; r++ ) {
@@ -331,13 +274,13 @@ icvHoughLinesStandard( const CvMat* img, float rho, float theta,
     }
     logss(ss);
 
-    //ss << "accum2:" << endl;
-    //for (int i = 0; i < (numangle+2) * (numrho+2); i ++) {
-    //  if (i%10==0) {ss << endl; ss << i << ",";}
-    //  ss << accum[i] << ",";
+    ss << "accum2:" << endl;
+    for (int i = 0; i < (numangle+2) * (numrho+2); i ++) {
+      if (i%10==0) {ss << endl; ss << i << ",";}
+      ss << accum[i] << ",";
 
-    //}
-    //logss(ss);
+    }
+    logss(ss);
 
     ss << "lines4:" << endl; logss(ss);
 
@@ -365,11 +308,9 @@ icvHoughLinesStandard( const CvMat* img, float rho, float theta,
 
             if( accum[base] > threshold &&
                 accum[base] > accum[base - 1] && accum[base] >= accum[base + 1] &&
-                accum[base] > accum[base - numrho - 2] && accum[base] >= accum[base + numrho + 2] 
-                //&&
-                //accum_ori[base] > accum_ori[base - 1] && accum_ori[base] >= accum_ori[base + 1] &&
-                //accum_ori[base] > accum_ori[base - numrho - 2] && accum_ori[base] >= accum_ori[base + numrho + 2] 
-                )
+                accum[base] > accum[base - numrho - 2] && accum[base] >= accum[base + numrho + 2] &&
+                accum_ori[base] > accum_ori[base - 1] && accum_ori[base] >= accum_ori[base + 1] &&
+                accum_ori[base] > accum_ori[base - numrho - 2] && accum_ori[base] >= accum_ori[base + numrho + 2] )
                 {
                   //ss << "lines4-2:" << total << ";" << base << endl; logss(ss);
                   sort_buf[total++] = base;
