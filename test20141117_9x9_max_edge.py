@@ -130,14 +130,27 @@ mask_size = 10
 #
 for left in range(0, cols-block_size, mask_size):
   for top in range(0, rows-block_size, mask_size):
+    #if True:
+    #left=50
+    #top=50
     roi=gray[left:left+block_size, top:top+block_size]
     gray_out=find_edge(roi, block_size, mask_size, 100)
     cv2.imwrite('building_in_'+str(left)+'_'+str(top)+'.png', roi)
     cv2.imwrite('building_out_'+str(left)+'_'+str(top)+'.png', gray_out)
     img_out[left+block_size/2-mask_size/2:left+block_size/2+mask_size/2, top+block_size/2-mask_size/2:top+block_size/2+mask_size/2]=gray_out
 
-plt.subplot(211),plt.imshow(img)
-plt.subplot(212),plt.imshow(img_out)
+fig=plt.figure()
+ax1=fig.add_subplot(121)
+ax1.imshow(img)
+ax2=fig.add_subplot(122)
+#plt.subplot(122),
+ax2.imshow(img_out)
+
+for left in range(0, cols-block_size, mask_size):
+  ax2.plot([left+block_size/2-mask_size/2-0.5, left+block_size/2-mask_size/2-0.5], [1-0.5, rows-0.5], 'k-', linewidth=1)
+
+for top in range(0, rows-block_size, mask_size):
+  ax2.plot([1-0.5, cols-0.5], [top+block_size/2-mask_size/2-0.5, top+block_size/2-mask_size/2-0.5], 'k-', linewidth=1)
 #rows,cols = gray.shape
 #rows,cols = gray.shape
 #if (rows > cols): rows=cols
