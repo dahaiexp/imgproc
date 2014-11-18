@@ -42,8 +42,11 @@ def on_circles(x,y,circles):
     #if(first): break
   return False
 
+g_count=0
 
 def find_edge(gray_block, block_size, mask_size):
+  global g_count
+
   # initialize
   max_degree=-1
   max_pos=-1
@@ -55,22 +58,24 @@ def find_edge(gray_block, block_size, mask_size):
 
   # for each degree, get max sum
   for degree in range(0, 180, 10):
-    print "degree:"+str(degree)
+    #print "degree:"+str(degree)
 
     # rotate the image, use a mask to filter out the needed part
     M = cv2.getRotationMatrix2D((block_size/2,block_size/2),degree,1)
-    dst = cv2.warpAffine(gray_dog,M,(block_size,block_size))[block_size/2-mask_size:block_size/2+mask_size,block_size/2-mask_size:block_size/2+mask_size]
+    dst = cv2.warpAffine(gray_dog,M,(block_size,block_size))[block_size/2-mask_size/2:block_size/2+mask_size/2,block_size/2-mask_size/2:block_size/2+mask_size/2]
+    cv2.imwrite('building_debug'+str(g_count)+'.png', dst)
+    g_count=g_count+1
     pos = (degree/10)+1
     if (pos >= 10): pos=pos+9
     #plt.subplot(4, 9, pos),plt.imshow(dst,cmap = 'gray')
     sum_dst = np.sum(dst,axis=0)
   
     sum_dst_max_idx = np.argmax(sum_dst)
-    print "argmax:"+str(sum_dst_max_idx)
+    #print "argmax:"+str(sum_dst_max_idx)
     sum_dst_max=sum_dst[sum_dst_max_idx]
-    print "sum_dst_max:"+str(sum_dst_max)
+    #print "sum_dst_max:"+str(sum_dst_max)
     if (sum_dst_max > max_sum):
-      print "new_max_degree"
+      #print "new_max_degree"
       max_degree=degree
       max_pos=sum_dst_max_idx
       max_sum = sum_dst_max
@@ -78,7 +83,7 @@ def find_edge(gray_block, block_size, mask_size):
     #plt.subplot(4, 9, pos+9),plt.plot(sum_dst)
     #plt.subplot(2, 18, (degree/10)+1+18),plt.hist(dst.ravel(),256,[0,256])
   
-  dist_from_center=max_pos-mask_size
+  dist_from_center=max_pos-mask_size/2
   print "dist_from_center:"+str(dist_from_center)+";block_size:"+str(block_size)
   theta=(max_degree+0)/180.0*np.pi
   print "theta:"+str(theta)+";max_degree:"+str(max_degree)
@@ -86,8 +91,8 @@ def find_edge(gray_block, block_size, mask_size):
   a = np.cos(theta)
   b = np.sin(theta)
   print "a:"+str(theta)+";b:"+str(b)
-  x0 = a*rho+mask_size
-  y0 = b*rho+mask_size
+  x0 = a*rho+mask_size/2
+  y0 = b*rho+mask_size/2
   print "x0:"+str(x0)+";y0:"+str(y0)
   x1 = int(x0 + 100*(-b))
   y1 = int(y0 + 100*(a))
@@ -95,7 +100,7 @@ def find_edge(gray_block, block_size, mask_size):
   y2 = int(y0 - 100*(a))
   print "x1:"+str(x1)+";y1:"+str(y1)
   print "x2:"+str(x2)+";y2:"+str(y2)
-  gray_block=cv2.cvtColor(gray_block[block_size/2-mask_size:block_size/2+mask_size,block_size/2-mask_size:block_size/2+mask_size],cv2.COLOR_GRAY2BGR)
+  gray_block=cv2.cvtColor(gray_block[block_size/2-mask_size/2:block_size/2+mask_size/2,block_size/2-mask_size/2:block_size/2+mask_size/2],cv2.COLOR_GRAY2BGR)
   cv2.line(gray_block,(x1,y1),(x2,y2),(0,0,255),2)
   #cv2.line(gray_dog,(0,0),(140,140),(0,0,255),2)
   #plt.subplot(4, 9, 1),plt.imshow(gray_dog,cmap = 'gray')
@@ -115,7 +120,7 @@ rows,cols = gray.shape
 gray_out=find_edge(gray, rows, 30)
 plt.subplot(1, 1, 1),plt.imshow(gray_out,cmap = 'gray')
 
-block_size = 45
+block_size = 46
 mask_size = 30
 block_num = rows / block_size
 
@@ -124,6 +129,7 @@ for left in range(0, cols-block_size, mask_size):
   for top in range(0, rows-block_size, mask_size):
     roi=gray[left:left+block_size, top:top+block_size]
     gray_out=find_edge(roi, block_size, mask_size)
+    cv2.imwrite('building_in_'+str(left)+'_'+str(top)+'.png', roi)
     cv2.imwrite('building_out_'+str(left)+'_'+str(top)+'.png', gray_out)
 
 #rows,cols = gray.shape
