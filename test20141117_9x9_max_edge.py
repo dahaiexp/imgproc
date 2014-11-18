@@ -42,6 +42,65 @@ def on_circles(x,y,circles):
     #if(first): break
   return False
 
+
+def find_edge(gray_block, block_size, mask_size):
+  # initialize
+  max_degree=-1
+  max_pos=-1
+  max_sum=-1
+
+  # calculate DoG 
+  gray_blur7 = cv2.medianBlur(gray_block,7)
+  gray_dog = cv2.subtract(gray_block, gray_blur7)
+
+  # for each degree, get max sum
+  for degree in range(0, 180, 10):
+    print "degree:"+str(degree)
+
+    # rotate the image, use a mask to filter out the needed part
+    M = cv2.getRotationMatrix2D((block_size/2,block_size/2),degree,1)
+    dst = cv2.warpAffine(gray_dog,M,(block_size,block_size))[block_size/2-mask_size:block_size/2+mask_size,block_size/2-mask_size:block_size/2+mask_size]
+    pos = (degree/10)+1
+    if (pos >= 10): pos=pos+9
+    #plt.subplot(4, 9, pos),plt.imshow(dst,cmap = 'gray')
+    sum_dst = np.sum(dst,axis=0)
+  
+    sum_dst_max_idx = np.argmax(sum_dst)
+    print "argmax:"+str(sum_dst_max_idx)
+    sum_dst_max=sum_dst[sum_dst_max_idx]
+    print "sum_dst_max:"+str(sum_dst_max)
+    if (sum_dst_max > max_sum):
+      print "new_max_degree"
+      max_degree=degree
+      max_pos=sum_dst_max_idx
+      max_sum = sum_dst_max
+  
+    #plt.subplot(4, 9, pos+9),plt.plot(sum_dst)
+    #plt.subplot(2, 18, (degree/10)+1+18),plt.hist(dst.ravel(),256,[0,256])
+  
+  dist_from_center=max_pos-mask_size
+  print "dist_from_center:"+str(dist_from_center)+";block_size:"+str(block_size)
+  theta=(max_degree+0)/180.0*np.pi
+  print "theta:"+str(theta)+";max_degree:"+str(max_degree)
+  rho=dist_from_center
+  a = np.cos(theta)
+  b = np.sin(theta)
+  print "a:"+str(theta)+";b:"+str(b)
+  x0 = a*rho+mask_size
+  y0 = b*rho+mask_size
+  print "x0:"+str(x0)+";y0:"+str(y0)
+  x1 = int(x0 + 100*(-b))
+  y1 = int(y0 + 100*(a))
+  x2 = int(x0 - 100*(-b))
+  y2 = int(y0 - 100*(a))
+  print "x1:"+str(x1)+";y1:"+str(y1)
+  print "x2:"+str(x2)+";y2:"+str(y2)
+  gray_block=cv2.cvtColor(gray_block[block_size/2-mask_size:block_size/2+mask_size,block_size/2-mask_size:block_size/2+mask_size],cv2.COLOR_GRAY2BGR)
+  cv2.line(gray_block,(x1,y1),(x2,y2),(0,0,255),2)
+  #cv2.line(gray_dog,(0,0),(140,140),(0,0,255),2)
+  #plt.subplot(4, 9, 1),plt.imshow(gray_dog,cmap = 'gray')
+  return gray_block
+
 #######################################################
 # 1. for each degree, rotate pixel
 # 2. calculate histogram
@@ -51,59 +110,74 @@ def on_circles(x,y,circles):
 # 1. for each degree, rotate pixel
 img = cv2.imread('building.jpg')
 gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
-
 rows,cols = gray.shape
-rows,cols = gray.shape
-if (rows > cols): rows=cols
 
-max_degree=-1
-max_pos=-1
-max_sum=-1
-gray_blur7 = cv2.medianBlur(gray,7)
-gray_dog = cv2.subtract(gray, gray_blur7)
-for degree in range(0, 180, 10):
-  print "degree:"+str(degree)
-  M = cv2.getRotationMatrix2D((rows/2,rows/2),degree,1)
-  dst = cv2.warpAffine(gray_dog,M,(rows,rows))[rows/2-30:rows/2+30,rows/2-30:rows/2+30]
-  pos = (degree/10)+1
-  if (pos >= 10): pos=pos+9
-  plt.subplot(4, 9, pos),plt.imshow(dst,cmap = 'gray')
-  sum_dst = np.sum(dst,axis=0)
+gray_out=find_edge(gray, rows, 30)
+plt.subplot(1, 1, 1),plt.imshow(gray_out,cmap = 'gray')
 
-  sum_dst_max_idx = np.argmax(sum_dst)
-  print "argmax:"+str(sum_dst_max_idx)
-  sum_dst_max=sum_dst[sum_dst_max_idx]
-  print "sum_dst_max:"+str(sum_dst_max)
-  if (sum_dst_max > max_sum):
-    print "new_max_degree"
-    max_degree=degree
-    max_pos=sum_dst_max_idx
-    max_sum = sum_dst_max
+block_size = 45
+mask_size = 30
+block_num = rows / block_size
 
-  plt.subplot(4, 9, pos+9),plt.plot(sum_dst)
-  #plt.subplot(2, 18, (degree/10)+1+18),plt.hist(dst.ravel(),256,[0,256])
+#
+for left in range(0, cols-block_size, mask_size):
+  for top in range(0, rows-block_size, mask_size):
+    roi=gray[left:left+block_size, top:top+block_size]
+    gray_out=find_edge(roi, block_size, mask_size)
+    cv2.imwrite('building_out_'+str(left)+'_'+str(top)+'.png', gray_out)
 
-dist_from_center=max_pos-30
-print "dist_from_center:"+str(dist_from_center)+";rows:"+str(rows)
-theta=(max_degree+0)/180.0*np.pi
-print "theta:"+str(theta)+";max_degree:"+str(max_degree)
-rho=dist_from_center
-a = np.cos(theta)
-b = np.sin(theta)
-print "a:"+str(theta)+";b:"+str(b)
-x0 = a*rho+30
-y0 = b*rho+30
-print "x0:"+str(x0)+";y0:"+str(y0)
-x1 = int(x0 + 100*(-b))
-y1 = int(y0 + 100*(a))
-x2 = int(x0 - 100*(-b))
-y2 = int(y0 - 100*(a))
-print "x1:"+str(x1)+";y1:"+str(y1)
-print "x2:"+str(x2)+";y2:"+str(y2)
-gray_dog=cv2.cvtColor(gray_dog[rows/2-30:rows/2+30,rows/2-30:rows/2+30],cv2.COLOR_GRAY2BGR)
-cv2.line(gray_dog,(x1,y1),(x2,y2),(0,0,255),2)
+#rows,cols = gray.shape
+#rows,cols = gray.shape
+#if (rows > cols): rows=cols
+#
+#max_degree=-1
+#max_pos=-1
+#max_sum=-1
+#gray_blur7 = cv2.medianBlur(gray,7)
+#gray_dog = cv2.subtract(gray, gray_blur7)
+#for degree in range(0, 180, 10):
+#  print "degree:"+str(degree)
+#  M = cv2.getRotationMatrix2D((rows/2,rows/2),degree,1)
+#  dst = cv2.warpAffine(gray_dog,M,(rows,rows))[rows/2-30:rows/2+30,rows/2-30:rows/2+30]
+#  pos = (degree/10)+1
+#  if (pos >= 10): pos=pos+9
+#  plt.subplot(4, 9, pos),plt.imshow(dst,cmap = 'gray')
+#  sum_dst = np.sum(dst,axis=0)
+#
+#  sum_dst_max_idx = np.argmax(sum_dst)
+#  print "argmax:"+str(sum_dst_max_idx)
+#  sum_dst_max=sum_dst[sum_dst_max_idx]
+#  print "sum_dst_max:"+str(sum_dst_max)
+#  if (sum_dst_max > max_sum):
+#    print "new_max_degree"
+#    max_degree=degree
+#    max_pos=sum_dst_max_idx
+#    max_sum = sum_dst_max
+#
+#  plt.subplot(4, 9, pos+9),plt.plot(sum_dst)
+#  #plt.subplot(2, 18, (degree/10)+1+18),plt.hist(dst.ravel(),256,[0,256])
+#
+#dist_from_center=max_pos-30
+#print "dist_from_center:"+str(dist_from_center)+";rows:"+str(rows)
+#theta=(max_degree+0)/180.0*np.pi
+#print "theta:"+str(theta)+";max_degree:"+str(max_degree)
+#rho=dist_from_center
+#a = np.cos(theta)
+#b = np.sin(theta)
+#print "a:"+str(theta)+";b:"+str(b)
+#x0 = a*rho+30
+#y0 = b*rho+30
+#print "x0:"+str(x0)+";y0:"+str(y0)
+#x1 = int(x0 + 100*(-b))
+#y1 = int(y0 + 100*(a))
+#x2 = int(x0 - 100*(-b))
+#y2 = int(y0 - 100*(a))
+#print "x1:"+str(x1)+";y1:"+str(y1)
+#print "x2:"+str(x2)+";y2:"+str(y2)
+#gray_dog=cv2.cvtColor(gray_dog[rows/2-30:rows/2+30,rows/2-30:rows/2+30],cv2.COLOR_GRAY2BGR)
+#cv2.line(gray_dog,(x1,y1),(x2,y2),(0,0,255),2)
 #cv2.line(gray_dog,(0,0),(140,140),(0,0,255),2)
-plt.subplot(4, 9, 1),plt.imshow(gray_dog,cmap = 'gray')
+#plt.subplot(4, 9, 1),plt.imshow(gray_dog,cmap = 'gray')
 # 2. calculate histogram
 # 3. find the max, remember the degree and position.
 # 4. display an edge along the max position and degree.
@@ -119,10 +193,10 @@ plt.subplot(4, 9, 1),plt.imshow(gray_dog,cmap = 'gray')
 #plt.subplot(384),plt.hist(dst.ravel(),256,[0,256]);
 #plt.title('Line Image'), plt.xticks([]), plt.yticks([])
 
-plt.show()
-
-cv2.waitKey(0)
-cv2.destroyAllWindows()
+#plt.show()
+#
+#cv2.waitKey(0)
+#cv2.destroyAllWindows()
 
 ########################################################
 ##img = cv2.imread('building.jpg')
