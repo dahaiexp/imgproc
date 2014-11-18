@@ -44,7 +44,7 @@ def on_circles(x,y,circles):
 
 g_count=0
 
-def find_edge(gray_block, block_size, mask_size):
+def find_edge(gray_block, block_size, mask_size, thres):
   global g_count
 
   # initialize
@@ -63,7 +63,7 @@ def find_edge(gray_block, block_size, mask_size):
     # rotate the image, use a mask to filter out the needed part
     M = cv2.getRotationMatrix2D((block_size/2,block_size/2),degree,1)
     dst = cv2.warpAffine(gray_dog,M,(block_size,block_size))[block_size/2-mask_size/2:block_size/2+mask_size/2,block_size/2-mask_size/2:block_size/2+mask_size/2]
-    cv2.imwrite('building_debug'+str(g_count)+'.png', dst)
+    #cv2.imwrite('building_debug'+str(g_count)+'.png', dst)
     g_count=g_count+1
     pos = (degree/10)+1
     if (pos >= 10): pos=pos+9
@@ -83,6 +83,9 @@ def find_edge(gray_block, block_size, mask_size):
     #plt.subplot(4, 9, pos+9),plt.plot(sum_dst)
     #plt.subplot(2, 18, (degree/10)+1+18),plt.hist(dst.ravel(),256,[0,256])
   
+  gray_block=cv2.cvtColor(gray_block[block_size/2-mask_size/2:block_size/2+mask_size/2,block_size/2-mask_size/2:block_size/2+mask_size/2],cv2.COLOR_GRAY2BGR)
+  if (max_sum < thres): return gray_block;
+
   dist_from_center=max_pos-mask_size/2
   print "dist_from_center:"+str(dist_from_center)+";block_size:"+str(block_size)
   theta=(max_degree+0)/180.0*np.pi
@@ -100,7 +103,6 @@ def find_edge(gray_block, block_size, mask_size):
   y2 = int(y0 - 100*(a))
   print "x1:"+str(x1)+";y1:"+str(y1)
   print "x2:"+str(x2)+";y2:"+str(y2)
-  gray_block=cv2.cvtColor(gray_block[block_size/2-mask_size/2:block_size/2+mask_size/2,block_size/2-mask_size/2:block_size/2+mask_size/2],cv2.COLOR_GRAY2BGR)
   cv2.line(gray_block,(x1,y1),(x2,y2),(0,0,255),2)
   #cv2.line(gray_dog,(0,0),(140,140),(0,0,255),2)
   #plt.subplot(4, 9, 1),plt.imshow(gray_dog,cmap = 'gray')
@@ -114,24 +116,28 @@ def find_edge(gray_block, block_size, mask_size):
 
 # 1. for each degree, rotate pixel
 img = cv2.imread('building.jpg')
+img_out=img.copy()
 gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
 rows,cols = gray.shape
 
-gray_out=find_edge(gray, rows, 30)
-plt.subplot(1, 1, 1),plt.imshow(gray_out,cmap = 'gray')
-
-block_size = 46
-mask_size = 30
-block_num = rows / block_size
+#gray_out=find_edge(gray, rows, 30)
+#plt.subplot(1, 1, 1),plt.imshow(gray_out,cmap = 'gray')
+#
+block_size = 16
+mask_size = 10
+#block_num = rows / block_size
 
 #
 for left in range(0, cols-block_size, mask_size):
   for top in range(0, rows-block_size, mask_size):
     roi=gray[left:left+block_size, top:top+block_size]
-    gray_out=find_edge(roi, block_size, mask_size)
+    gray_out=find_edge(roi, block_size, mask_size, 100)
     cv2.imwrite('building_in_'+str(left)+'_'+str(top)+'.png', roi)
     cv2.imwrite('building_out_'+str(left)+'_'+str(top)+'.png', gray_out)
+    img_out[left+block_size/2-mask_size/2:left+block_size/2+mask_size/2, top+block_size/2-mask_size/2:top+block_size/2+mask_size/2]=gray_out
 
+plt.subplot(211),plt.imshow(img)
+plt.subplot(212),plt.imshow(img_out)
 #rows,cols = gray.shape
 #rows,cols = gray.shape
 #if (rows > cols): rows=cols
@@ -354,8 +360,8 @@ for left in range(0, cols-block_size, mask_size):
 ##img_lines_all_gray = cv2.cvtColor(img_lines_all,cv2.COLOR_BGR2GRAY)
 ##np.savetxt(today+"img_lines_all.csv", img_lines_all_gray, '%.u', ',')
 #
-#plt.show()
-#
-#cv2.waitKey(0)
-#cv2.destroyAllWindows()
-#
+plt.show()
+
+cv2.waitKey(0)
+cv2.destroyAllWindows()
+
