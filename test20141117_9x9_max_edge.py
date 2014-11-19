@@ -6,6 +6,7 @@ from math import sqrt
 import time
 from datetime import date
 from datetime import datetime
+import sys
 
 def height(img):
   return img.shape[0]
@@ -42,15 +43,21 @@ def on_circles(x,y,circles):
     #if(first): break
   return False
 
+def sort_by_column(arr, column):
+  return arr[arr[:,column].argsort()]
+
 g_count=0
 
-def find_edge(gray_block, block_size, mask_size, thres):
+def find_edge(gray_block, block_size, mask_size, thres, num_return):
   global g_count
 
   # initialize
-  max_degree=-1
-  max_pos=-1
-  max_sum=-1
+  max_degree_info = []
+  max_degree_dump = []
+
+  #max_degree=-1
+  #max_pos=-1
+  #max_sum=-1
 
   # calculate DoG 
   gray_blur7 = cv2.medianBlur(gray_block,7)
@@ -58,7 +65,7 @@ def find_edge(gray_block, block_size, mask_size, thres):
   gray_dog = cv2.subtract(gray_blur7, gray_block)
 
   # for each degree, get max sum
-  for degree in range(0, 180, 10):
+  for degree in range(0, 180, 5):
     #print "degree:"+str(degree)
 
     # rotate the image, use a mask to filter out the needed part
@@ -76,15 +83,25 @@ def find_edge(gray_block, block_size, mask_size, thres):
     #print "argmax:"+str(sum_dst_max_idx)
     sum_dst_max=sum_dst[sum_dst_max_idx]
     #print "sum_dst_max:"+str(sum_dst_max)
-    if (sum_dst_max > max_sum):
-      #print "new_max_degree"
-      max_degree=degree
-      max_pos=sum_dst_max_idx
-      max_sum = sum_dst_max
+
+    max_degree_info.append([degree, sum_dst_max, sum_dst_max_idx])
+    max_degree_dump.append([degree, sum_dst_max, sum_dst_max_idx, sum_dst])
+
+    #if (sum_dst_max > max_sum):
+    #  #print "new_max_degree"
+    #  max_degree=degree
+    #  max_pos=sum_dst_max_idx
+    #  max_sum = sum_dst_max
   
     #plt.subplot(4, 9, pos+9),plt.plot(sum_dst)
     #plt.subplot(2, 18, (degree/10)+1+18),plt.hist(dst.ravel(),256,[0,256])
   
+  print max_degree_info
+  max_degree_info = np.array(max_degree_info)
+  max_degree_info = sort_by_column(max_degree_info, 1)
+  print max_degree_info
+  #sys.exit()
+  max_degree, max_sum, max_pos=max_degree_info[-1]
   gray_block=cv2.cvtColor(gray_block[block_size/2-mask_size/2:block_size/2+mask_size/2,block_size/2-mask_size/2:block_size/2+mask_size/2],cv2.COLOR_GRAY2BGR)
   if (max_sum < thres): return gray_block;
 
@@ -126,7 +143,7 @@ gray_blur7 = cv2.medianBlur(gray,7)
 #gray_dog = cv2.subtract(gray, gray_blur7)
 gray_dog = cv2.subtract(gray_blur7, gray)
 
-gray_out=find_edge(gray, rows, rows/1.5, 10)
+gray_out=find_edge(gray, rows, rows/1.5, 10, 10)
 cv2.imwrite("building-out.png", gray_out)
 #plt.subplot(1, 1, 1),plt.imshow(gray_out,cmap = 'gray')
 #
