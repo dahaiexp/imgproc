@@ -60,12 +60,14 @@ def find_edge(gray_block, block_size, mask_size, thres, num_return):
   #max_sum=-1
 
   # calculate DoG 
-  gray_blur7 = cv2.medianBlur(gray_block,7)
+  #gray_blur7 = cv2.medianBlur(gray_block,7)
+  gray_blur7 = cv2.GaussianBlur(gray_block,(5,5),0)
   #gray_dog = cv2.subtract(gray_block, gray_blur7)
   gray_dog = cv2.subtract(gray_blur7, gray_block)
 
   # for each degree, get max sum
-  for degree in range(0, 180, 5):
+  degree_step=2
+  for degree in range(0, 180, degree_step):
     #print "degree:"+str(degree)
 
     # rotate the image, use a mask to filter out the needed part
@@ -73,8 +75,8 @@ def find_edge(gray_block, block_size, mask_size, thres, num_return):
     dst = cv2.warpAffine(gray_dog,M,(block_size,block_size))[block_size/2-mask_size/2:block_size/2+mask_size/2,block_size/2-mask_size/2:block_size/2+mask_size/2]
     #cv2.imwrite('building_debug'+str(g_count)+'.png', dst)
     g_count=g_count+1
-    pos = (degree/10)+1
-    if (pos >= 10): pos=pos+9
+    pos = (degree/degree_step)+1
+    if (pos >= degree_step): pos=pos+9
     #plt.subplot(4, 9, pos),plt.imshow(dst,cmap = 'gray')
     #sum_dst = np.sum(dst,axis=0)
     sum_dst = np.median(dst,axis=0)
@@ -84,8 +86,12 @@ def find_edge(gray_block, block_size, mask_size, thres, num_return):
     sum_dst_max=sum_dst[sum_dst_max_idx]
     #print "sum_dst_max:"+str(sum_dst_max)
 
-    max_degree_info.append([degree, sum_dst_max, sum_dst_max_idx])
-    max_degree_dump.append([degree, sum_dst_max, sum_dst_max_idx, sum_dst])
+    for j in range(0,mask_size):
+      if sum_dst[j] > thres:
+        max_degree_info.append([degree, sum_dst[j], j])
+
+    #max_degree_info.append([degree, sum_dst_max, sum_dst_max_idx])
+    #max_degree_dump.append([degree, sum_dst_max, sum_dst_max_idx, sum_dst])
 
     #if (sum_dst_max > max_sum):
     #  #print "new_max_degree"
@@ -95,36 +101,54 @@ def find_edge(gray_block, block_size, mask_size, thres, num_return):
   
     #plt.subplot(4, 9, pos+9),plt.plot(sum_dst)
     #plt.subplot(2, 18, (degree/10)+1+18),plt.hist(dst.ravel(),256,[0,256])
+
+
   
+  print max_degree_dump
   print max_degree_info
   max_degree_info = np.array(max_degree_info)
   max_degree_info = sort_by_column(max_degree_info, 1)
-  print max_degree_info
-  #sys.exit()
-  max_degree, max_sum, max_pos=max_degree_info[-1]
-  gray_block=cv2.cvtColor(gray_block[block_size/2-mask_size/2:block_size/2+mask_size/2,block_size/2-mask_size/2:block_size/2+mask_size/2],cv2.COLOR_GRAY2BGR)
-  if (max_sum < thres): return gray_block;
 
-  dist_from_center=max_pos-mask_size/2
-  print "dist_from_center:"+str(dist_from_center)+";block_size:"+str(block_size)
-  theta=(max_degree+0)/180.0*np.pi
-  print "theta:"+str(theta)+";max_degree:"+str(max_degree)
-  rho=dist_from_center
-  a = np.cos(theta)
-  b = np.sin(theta)
-  print "a:"+str(theta)+";b:"+str(b)
-  x0 = a*rho+mask_size/2
-  y0 = b*rho+mask_size/2
-  print "x0:"+str(x0)+";y0:"+str(y0)
-  x1 = int(x0 + 100*(-b))
-  y1 = int(y0 + 100*(a))
-  x2 = int(x0 - 100*(-b))
-  y2 = int(y0 - 100*(a))
-  print "x1:"+str(x1)+";y1:"+str(y1)
-  print "x2:"+str(x2)+";y2:"+str(y2)
-  cv2.line(gray_block,(x1,y1),(x2,y2),(0,0,255),2)
-  #cv2.line(gray_dog,(0,0),(140,140),(0,0,255),2)
-  #plt.subplot(4, 9, 1),plt.imshow(gray_dog,cmap = 'gray')
+  ## check if two lines are too close, < 3pixels, if so, remove it
+  #pixels = []
+  #for degree in range(0, 180, 2):
+  #  for d1,sum1,pixel1 in np.nditer(max_degree_info):
+  #    if d1 <> degree: continue
+
+  #    # belongs to this degree
+
+
+  print max_degree_info
+
+
+
+  #sys.exit()
+
+  gray_block=cv2.cvtColor(gray_block[block_size/2-mask_size/2:block_size/2+mask_size/2,block_size/2-mask_size/2:block_size/2+mask_size/2],cv2.COLOR_GRAY2BGR)
+  for i in range(1,num_return,1):
+    max_degree, max_sum, max_pos=max_degree_info[-i]
+    if (max_sum < thres): continue
+
+    dist_from_center=max_pos-mask_size/2
+    print "dist_from_center:"+str(dist_from_center)+";block_size:"+str(block_size)
+    theta=(max_degree+0)/180.0*np.pi
+    print "theta:"+str(theta)+";max_degree:"+str(max_degree)
+    rho=dist_from_center
+    a = np.cos(theta)
+    b = np.sin(theta)
+    print "a:"+str(theta)+";b:"+str(b)
+    x0 = a*rho+mask_size/2
+    y0 = b*rho+mask_size/2
+    print "x0:"+str(x0)+";y0:"+str(y0)
+    x1 = int(x0 + 100*(-b))
+    y1 = int(y0 + 100*(a))
+    x2 = int(x0 - 100*(-b))
+    y2 = int(y0 - 100*(a))
+    print "x1:"+str(x1)+";y1:"+str(y1)
+    print "x2:"+str(x2)+";y2:"+str(y2)
+    cv2.line(gray_block,(x1,y1),(x2,y2),(0,0,255),2)
+    #cv2.line(gray_dog,(0,0),(140,140),(0,0,255),2)
+    #plt.subplot(4, 9, 1),plt.imshow(gray_dog,cmap = 'gray')
   return gray_block
 
 #######################################################
@@ -138,12 +162,14 @@ img = cv2.imread('building.jpg')
 img_out=img.copy()
 gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
 rows,cols = gray.shape
+rows=min(rows,cols)
 # calculate DoG 
-gray_blur7 = cv2.medianBlur(gray,7)
+#gray_blur7 = cv2.medianBlur(gray,7)
+gray_blur7 = cv2.GaussianBlur(gray,(5,5),0)
 #gray_dog = cv2.subtract(gray, gray_blur7)
 gray_dog = cv2.subtract(gray_blur7, gray)
 
-gray_out=find_edge(gray, rows, rows/1.5, 10, 10)
+gray_out=find_edge(gray, rows, (int)(rows/1.5), 1, 15)
 cv2.imwrite("building-out.png", gray_out)
 #plt.subplot(1, 1, 1),plt.imshow(gray_out,cmap = 'gray')
 #
