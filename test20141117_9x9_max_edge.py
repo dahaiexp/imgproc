@@ -126,47 +126,58 @@ gray_blur7 = cv2.medianBlur(gray,7)
 #gray_dog = cv2.subtract(gray, gray_blur7)
 gray_dog = cv2.subtract(gray_blur7, gray)
 
-#gray_out=find_edge(gray, rows, 30)
+gray_out=find_edge(gray, rows, rows/1.5, 10)
+cv2.imwrite("building-out.png", gray_out)
 #plt.subplot(1, 1, 1),plt.imshow(gray_out,cmap = 'gray')
 #
-block_size = 16
-mask_size = 10
-#block_num = rows / block_size
 
-#
-for left in range(0, cols-block_size, mask_size):
-  for top in range(0, rows-block_size, mask_size):
-    #if True:
-    #left=50
-    #top=50
-    roi=gray[left:left+block_size, top:top+block_size]
-    gray_out=find_edge(roi, block_size, mask_size, 10)
-    cv2.imwrite('building_in_'+str(left)+'_'+str(top)+'.png', roi)
-    cv2.imwrite('building_out_'+str(left)+'_'+str(top)+'.png', gray_out)
-    img_out[left+block_size/2-mask_size/2:left+block_size/2+mask_size/2, top+block_size/2-mask_size/2:top+block_size/2+mask_size/2]=gray_out
-
-fig=plt.figure()
-ax1=fig.add_subplot(121)
-ax1.imshow(gray_dog)
-for left in range(0, cols-block_size, mask_size):
-  ax1.plot([left+block_size/2-mask_size/2-0.5, left+block_size/2-mask_size/2-0.5], [1-0.5, rows-0.5], 'k-', linewidth=1)
-
-for top in range(0, rows-block_size, mask_size):
-  ax1.plot([1-0.5, cols-0.5], [top+block_size/2-mask_size/2-0.5, top+block_size/2-mask_size/2-0.5], 'k-', linewidth=1)
-
-ax1.axis([0,cols,rows, 0])
-
-ax2=fig.add_subplot(122)
-#plt.subplot(122),
-ax2.imshow(img_out)
-
-for left in range(0, cols-block_size, mask_size):
-  ax2.plot([left+block_size/2-mask_size/2-0.5, left+block_size/2-mask_size/2-0.5], [1-0.5, rows-0.5], 'k-', linewidth=1)
-
-for top in range(0, rows-block_size, mask_size):
-  ax2.plot([1-0.5, cols-0.5], [top+block_size/2-mask_size/2-0.5, top+block_size/2-mask_size/2-0.5], 'k-', linewidth=1)
-
-ax2.axis([0,cols,rows, 0])
+############################################################
+##img = cv2.imread('building.jpg')
+##img_out=img.copy()
+##gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
+##rows,cols = gray.shape
+### calculate DoG 
+##gray_blur7 = cv2.medianBlur(gray,7)
+###gray_dog = cv2.subtract(gray, gray_blur7)
+##gray_dog = cv2.subtract(gray_blur7, gray)
+##block_size = 16
+##mask_size = 10
+###block_num = rows / block_size
+##
+###
+##for left in range(0, cols-block_size, mask_size):
+##  for top in range(0, rows-block_size, mask_size):
+##    #if True:
+##    #left=50
+##    #top=50
+##    roi=gray[left:left+block_size, top:top+block_size]
+##    gray_out=find_edge(roi, block_size, mask_size, 10)
+##    cv2.imwrite('building_in_'+str(left)+'_'+str(top)+'.png', roi)
+##    cv2.imwrite('building_out_'+str(left)+'_'+str(top)+'.png', gray_out)
+##    img_out[left+block_size/2-mask_size/2:left+block_size/2+mask_size/2, top+block_size/2-mask_size/2:top+block_size/2+mask_size/2]=gray_out
+##
+##fig=plt.figure()
+##ax1=fig.add_subplot(121)
+##ax1.imshow(gray_dog)
+##for left in range(0, cols-block_size, mask_size):
+##  ax1.plot([left+block_size/2-mask_size/2-0.5, left+block_size/2-mask_size/2-0.5], [1-0.5, rows-0.5], 'k-', linewidth=1)
+##
+##for top in range(0, rows-block_size, mask_size):
+##  ax1.plot([1-0.5, cols-0.5], [top+block_size/2-mask_size/2-0.5, top+block_size/2-mask_size/2-0.5], 'k-', linewidth=1)
+##
+##ax1.axis([0,cols,rows, 0])
+##
+##ax2=fig.add_subplot(122)
+###plt.subplot(122),
+##ax2.imshow(img_out)
+##
+##for left in range(0, cols-block_size, mask_size):
+##  ax2.plot([left+block_size/2-mask_size/2-0.5, left+block_size/2-mask_size/2-0.5], [1-0.5, rows-0.5], 'k-', linewidth=1)
+##
+##for top in range(0, rows-block_size, mask_size):
+##  ax2.plot([1-0.5, cols-0.5], [top+block_size/2-mask_size/2-0.5, top+block_size/2-mask_size/2-0.5], 'k-', linewidth=1)
+##
+##ax2.axis([0,cols,rows, 0])
 
 #rows,cols = gray.shape
 #rows,cols = gray.shape
