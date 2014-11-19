@@ -54,7 +54,8 @@ def find_edge(gray_block, block_size, mask_size, thres):
 
   # calculate DoG 
   gray_blur7 = cv2.medianBlur(gray_block,7)
-  gray_dog = cv2.subtract(gray_block, gray_blur7)
+  #gray_dog = cv2.subtract(gray_block, gray_blur7)
+  gray_dog = cv2.subtract(gray_blur7, gray_block)
 
   # for each degree, get max sum
   for degree in range(0, 180, 10):
@@ -68,7 +69,8 @@ def find_edge(gray_block, block_size, mask_size, thres):
     pos = (degree/10)+1
     if (pos >= 10): pos=pos+9
     #plt.subplot(4, 9, pos),plt.imshow(dst,cmap = 'gray')
-    sum_dst = np.sum(dst,axis=0)
+    #sum_dst = np.sum(dst,axis=0)
+    sum_dst = np.median(dst,axis=0)
   
     sum_dst_max_idx = np.argmax(sum_dst)
     #print "argmax:"+str(sum_dst_max_idx)
@@ -121,7 +123,8 @@ gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
 rows,cols = gray.shape
 # calculate DoG 
 gray_blur7 = cv2.medianBlur(gray,7)
-gray_dog = cv2.subtract(gray, gray_blur7)
+#gray_dog = cv2.subtract(gray, gray_blur7)
+gray_dog = cv2.subtract(gray_blur7, gray)
 
 #gray_out=find_edge(gray, rows, 30)
 #plt.subplot(1, 1, 1),plt.imshow(gray_out,cmap = 'gray')
@@ -137,7 +140,7 @@ for left in range(0, cols-block_size, mask_size):
     #left=50
     #top=50
     roi=gray[left:left+block_size, top:top+block_size]
-    gray_out=find_edge(roi, block_size, mask_size, 100)
+    gray_out=find_edge(roi, block_size, mask_size, 10)
     cv2.imwrite('building_in_'+str(left)+'_'+str(top)+'.png', roi)
     cv2.imwrite('building_out_'+str(left)+'_'+str(top)+'.png', gray_out)
     img_out[left+block_size/2-mask_size/2:left+block_size/2+mask_size/2, top+block_size/2-mask_size/2:top+block_size/2+mask_size/2]=gray_out
