@@ -73,10 +73,11 @@ def scan(img, step):
         x=0;y+=step
 
 def draw_plane(img_out, a, b, d, z1):
-  for x,y in scan(img_out, 5):
+  for x,y in scan(img_out, 1):
     value=-a*x-b*y-d+z1
-    #print "x=", x, ";y=", y, ";value=%.2f" % value
+    print "x=", x, ";y=", y, ";value=%.2f" % value
     if (value>255): value=255
+    if (value<0): value=0
     img_out[x,y]=value
 
 visited={}
@@ -113,10 +114,10 @@ def generate_plane_theta(img, x1, y1, x2, y2, z1, theta):
     b=-b; a=-a; d=-d
     coords.append([a,b,d])
 
-  #print coords
+  print "coords=",coords
   for (a1,b1,d1) in coords:
     if not visited_4f(a1,b1,d1,z1):
-      #print "a=%f;b=%f;d=%f" % (a1, b1, d1)
+      print "a=%f;b=%f;d=%f" % (a1, b1, d1)
       draw_plane(img, a1, b1, d1, z1)
       #cv2.imwrite('gen_plane_out_'+"{:.1f}".format(a1)+'_'+"{:.1f}".format(b)+'_'+"{:.1f}".format(d1)+'_'+"{:.1f}".format(z1)+'.png', img)
       str=np.array_str(img)
@@ -146,37 +147,38 @@ def generate_plane(img, x1, y1, x2, y2, z1):
 
 #######################################################
 # 
+np.set_printoptions(edgeitems=100)
 blank_image = np.zeros((30,40), np.uint8) #(height,width)
 output_file= open("auto_planes_log.txt", "w")
 
-#generate_plane_theta(blank_image, 0, 0, 1, 0, 0, 45)
+generate_plane_theta(blank_image, 0, 0, 10, 0, 0, 10)
 
-for z in range(0,255,50):
-  print "start:"
-  for x1,y1 in left(blank_image, 10):
-    print "---------------------"
-    print "x1=", x1, "; y1=", y1,";z1=", z
-    for x2,y2 in top(blank_image, 10): generate_plane(blank_image, x1,y1,x2,y2,z)
-    print "---------------------"
-    print "x1=", x1, "; y1=", y1,";z1=", z
-    for x2,y2 in right(blank_image, 10): generate_plane(blank_image, x1,y1,x2,y2,z)
-    print "---------------------"
-    print "x1=", x1, "; y1=", y1,";z1=", z
-    for x2,y2 in bottom(blank_image, 10): generate_plane(blank_image, x1,y1,x2,y2,z)
-    print "---------------------"
-  for x1,y1 in top(blank_image, 10):
-    print "---------------------"
-    print "x1=", x1, "; y1=", y1,";z1=", z
-    for x2,y2 in right(blank_image, 10): generate_plane(blank_image, x1,y1,x2,y2,z)
-    print "---------------------"
-    print "x1=", x1, "; y1=", y1,";z1=", z
-    for x2,y2 in bottom(blank_image, 10): generate_plane(blank_image, x1,y1,x2,y2,z)
-    print "---------------------"
-  for x1,y1 in right(blank_image, 10):
-    print "---------------------"
-    print "x1=", x1, "; y1=", y1,";z1=", z
-    for x2,y2 in bottom(blank_image, 10): generate_plane(blank_image, x1,y1,x2,y2,z)
-    print "---------------------"
+#for z in range(0,255,50):
+#  print "start:"
+#  for x1,y1 in left(blank_image, 10):
+#    print "---------------------"
+#    print "x1=", x1, "; y1=", y1,";z1=", z
+#    for x2,y2 in top(blank_image, 10): generate_plane(blank_image, x1,y1,x2,y2,z)
+#    print "---------------------"
+#    print "x1=", x1, "; y1=", y1,";z1=", z
+#    for x2,y2 in right(blank_image, 10): generate_plane(blank_image, x1,y1,x2,y2,z)
+#    print "---------------------"
+#    print "x1=", x1, "; y1=", y1,";z1=", z
+#    for x2,y2 in bottom(blank_image, 10): generate_plane(blank_image, x1,y1,x2,y2,z)
+#    print "---------------------"
+#  for x1,y1 in top(blank_image, 10):
+#    print "---------------------"
+#    print "x1=", x1, "; y1=", y1,";z1=", z
+#    for x2,y2 in right(blank_image, 10): generate_plane(blank_image, x1,y1,x2,y2,z)
+#    print "---------------------"
+#    print "x1=", x1, "; y1=", y1,";z1=", z
+#    for x2,y2 in bottom(blank_image, 10): generate_plane(blank_image, x1,y1,x2,y2,z)
+#    print "---------------------"
+#  for x1,y1 in right(blank_image, 10):
+#    print "---------------------"
+#    print "x1=", x1, "; y1=", y1,";z1=", z
+#    for x2,y2 in bottom(blank_image, 10): generate_plane(blank_image, x1,y1,x2,y2,z)
+#    print "---------------------"
 
 output_file.close()
 
